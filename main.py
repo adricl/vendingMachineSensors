@@ -6,8 +6,17 @@ import ds18x20
 import utime
 import json
 from umqtt.robust import MQTTClient
-from slimDNS import SlimDNSServer
+from slimDNS import SlimDNSServer, bytes_to_dotted_ip
 import network
+
+#MQTT_SERVER_MDNS_ADDRESS="iot.local"
+MQTT_SERVER_MDNS_ADDRESS="wombat-pi.local"
+
+WAIT_TIME = 30
+
+SSID=""
+PASSWORD=""
+
 
 topTempHumid = None
 oneWires = None
@@ -16,25 +25,38 @@ airMonitor = None
 client = None
 wlan = None
 unique_id = None
+ip = None
 
 
 def send_mqtt(payload_out):
-    slimDNS = SlimDNSServer(wlan.ifconfig()[0])
-    host_address_bytes = slimDNS.resolve_mdns_address("iot.local")
-    
-    print('Connecting to MQTT server:', host_address_bytes)
-    mqtt = MQTTClient(client_id=unique_id, server=host_address_bytes, port=1883)
-    try:        
-        mqtt.connect()
+    global ip
+    slimDNS = None
+
+    try:
+        slimDNS = SlimDNSServer(wlan.ifconfig()[0])
+        host_address_bytes = slimDNS.resolve_mdns_address(MQTT_SERVER_MDNS_ADDRESS)
+        print(host_address_bytes)
+        if ip != None:
+            print(ip)
+        ip = bytes_to_dotted_ip(host_address_bytes)
     except Exception as e:
-        print('Could not connect to MQTT server')
+        print("Could not connect find mDNS address " + str(e))
 
-    try: 
-        mqtt.publish("vendingmachine/sensors", payload_out)
-    except Exception:
-        print("Failed To Publish")
+    if ip != None:
+        print('Connecting to MQTT server:', ip)
+        mqtt = None
+        try:
+            mqtt = MQTTClient(client_id=unique_id, server=ip, port=1883)        
+            mqtt.connect()
+        except Exception as e:
+            print('Could not connect to MQTT server')
+            return
 
-    mqtt.disconnect()
+        try: 
+            mqtt.publish("vendingmachine/sensors", payload_out)
+            mqtt.disconnect()
+        except Exception:
+            print("Failed To Publish")
 
 def get_data():
     payload = {}
@@ -93,7 +115,7 @@ def get_unique_id():
 def do_connect():
     if not wlan.isconnected():
         print('Connecting to network...')
-        wlan.connect('WelcomeHomeBOND', 'dumpbreath')
+        wlan.connect(SSID, PASSWORD)
         while not wlan.isconnected():
             pass
     print('Network config:', wlan.ifconfig())
@@ -112,4 +134,4 @@ while True:
     data = get_data()
     send_mqtt(data)
     wlan.disconnect()
-    utime.sleep(10)
+    utime.sleep(WAIT_TIME)
