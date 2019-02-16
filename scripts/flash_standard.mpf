@@ -1,0 +1,16 @@
+open ttyUSB0
+
+md lib
+
+put lib/mpu9250.py lib/mpu9250.py
+put lib/ssd1306.py lib/ssd1306.py
+put lib/ms5611.py lib/ms5611.py
+put lib/sgp30.py lib/sgp30.py
+put lib/slimDNS.py lib/slimDNS.py
+
+md lib/umqtt
+
+put lib/umqtt/simple.py lib/umqtt/simple.py
+put lib/umqtt/robust.py lib/umqtt/robust.py
+
+put main.py main.py
